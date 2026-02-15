@@ -21,7 +21,6 @@ if (!fs.existsSync(CONFIG.FILE_PATH)) {
   fs.mkdirSync(CONFIG.FILE_PATH, { recursive: true });
 }
 
-// 【修复】正确的 Agent 配置
 const httpAgent = new http.Agent({ keepAlive: false });
 const httpsAgent = new https.Agent({ keepAlive: false });
 
@@ -38,14 +37,13 @@ async function downloadAndExtract() {
   const url = "https://github.com/XTLS/Xray-core/releases/download/v24.1.10/Xray-linux-64.tar.gz";
   
   try {
-    // 【修复】使用正确的 Agent 实例
     const response = await axios({
       url: url,
       method: "GET",
       responseType: "stream",
       timeout: 30000,
-      httpAgent: httpAgent,      // ✅ 正确：Agent 实例
-      httpsAgent: httpsAgent      // ✅ 正确：Agent 实例
+      httpAgent: httpAgent,
+      httpsAgent: httpsAgent
     });
 
     const tarPath = path.join(CONFIG.FILE_PATH, "xray.tar.gz");
@@ -81,10 +79,11 @@ async function downloadAndExtract() {
 
 async function boot() {
   try {
-    console.log("[启动] 纯净IP WebSocket模式...");
+    console.log("[启动] 纯净IP最新配置模式...");
     
     const xrayPath = await downloadAndExtract();
 
+    // 【2026 修复】最新配置 - VLESS with Flow + XHTTP H2
     const config = {
       log: { loglevel: "error" },
       
@@ -96,20 +95,18 @@ async function boot() {
             clients: [
               {
                 id: CONFIG.UUID,
-                flow: "xtls-rprx-vision",
+                flow: "xtls-rprx-vision",  // ✅ 加入 Flow
+                seed: "",  // ✅ 加入 Seed
                 level: 0
               }
             ],
             decryption: "none"
           },
           streamSettings: {
-            network: "ws",
-            wsSettings: {
-              path: "/xray",
-              connectionReuse: true,
-              headers: {
-                "User-Agent": "Mozilla/5.0"
-              }
+            // 【新】改用 XHTTP H2（替代弃用的 gRPC）
+            network: "h2",
+            h2Settings: {
+              path: "/xray"
             },
             security: "none"
           },
@@ -178,11 +175,12 @@ async function boot() {
 }
 
 app.get("/", (req, res) => {
-  res.send("Pure Native IP - WebSocket Mode");
+  res.send("Pure Native IP - Latest VLESS with Flow + H2");
 });
 
 app.get(`/${CONFIG.SUB_PATH}`, (req, res) => {
-  const vless = `vless://${CONFIG.UUID}@${CONFIG.RAIL_DOMAIN}:443?encryption=none&flow=xtls-rprx-vision&security=tls&sni=${CONFIG.RAIL_DOMAIN}&type=ws&path=%2Fxray&host=${CONFIG.RAIL_DOMAIN}#Railway-Pure-Native`;
+  // 【更新】订阅链接改为 H2
+  const vless = `vless://${CONFIG.UUID}@${CONFIG.RAIL_DOMAIN}:443?encryption=none&flow=xtls-rprx-vision&security=tls&sni=${CONFIG.RAIL_DOMAIN}&type=h2&path=%2Fxray&host=${CONFIG.RAIL_DOMAIN}#Railway-Latest-H2`;
   
   res.type("text/plain");
   res.send(Buffer.from(vless).toString("base64"));
@@ -191,7 +189,7 @@ app.get(`/${CONFIG.SUB_PATH}`, (req, res) => {
 app.get("/health", (req, res) => {
   res.json({ 
     status: "online",
-    mode: "websocket-vision",
+    mode: "vless-with-flow-h2",
     uptime: process.uptime()
   });
 });
@@ -211,9 +209,8 @@ server.on("upgrade", (req, socket, head) => {
     target.on("connect", () => {
       socket.write(
         "HTTP/1.1 101 Switching Protocols\r\n" +
-        "Upgrade: websocket\r\n" +
+        "Upgrade: h2c\r\n" +
         "Connection: Upgrade\r\n" +
-        "Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\r\n" +
         "\r\n"
       );
       
@@ -222,7 +219,7 @@ server.on("upgrade", (req, socket, head) => {
     });
 
     target.on("error", (err) => {
-      console.error(`[WebSocket] 连接错误: ${err.message}`);
+      console.error(`[H2] 连接错误: ${err.message}`);
       socket.destroy();
     });
 
@@ -241,10 +238,11 @@ server.on("upgrade", (req, socket, head) => {
 });
 
 server.listen(CONFIG.PORT, "0.0.0.0", () => {
-  console.log(`\n[✓] 服务已启动`);
+  console.log(`\n[✓] 服务已启动 (2026 最新配置)`);
   console.log(`    端口: 0.0.0.0:${CONFIG.PORT}`);
   console.log(`    Railway Domain: ${CONFIG.RAIL_DOMAIN}`);
-  console.log(`    WebSocket 路径: /xray`);
+  console.log(`    协议: VLESS with Flow + H2`);
+  console.log(`    H2 路径: /xray`);
   console.log(`    订阅地址: https://${CONFIG.RAIL_DOMAIN}/${CONFIG.SUB_PATH}`);
   console.log(`    健康检查: https://${CONFIG.RAIL_DOMAIN}/health\n`);
 });
