@@ -7,7 +7,6 @@ const { spawn } = require("child_process");
 const unzipper = require("unzipper");
 const http = require("http");
 const net = require("net");
-const crypto = require("crypto"); // 用于计算动态 WS 握手
 
 const CONFIG = {
   UUID: process.env.UUID || "9afd1229-b893-40c1-84dd-51e7ce204913",
@@ -24,7 +23,7 @@ async function boot() {
   const xrayZipUrl = `https://github.com/XTLS/Xray-core/releases/download/v26.2.6/Xray-linux-64.zip`;
 
   try {
-    console.log("[INFO] 🚀 启动原生IP动态握手版...");
+    console.log("[INFO] 🚀 2026 极致纯净原生IP模式 (XHTTP版)...");
     const response = await axios({ url: xrayZipUrl, method: 'GET', responseType: 'stream' });
     await response.data.pipe(unzipper.Extract({ path: CONFIG.FILE_PATH })).promise();
     const xrayPath = path.join(CONFIG.FILE_PATH, 'xray');
@@ -35,47 +34,49 @@ async function boot() {
         if (bin) { fs.renameSync(path.join(CONFIG.FILE_PATH, bin), xrayPath); fs.chmodSync(xrayPath, 0o755); }
     }
 
+    // 【核心修正】改用 XHTTP 协议，彻底消除 Deprecated 警告，实现秒连
     const config = {
       log: { loglevel: "error" },
       inbounds: [{
         port: CONFIG.XRAY_PORT,
         protocol: "vless",
-        settings: { clients: [{ id: CONFIG.UUID, level: 0 }], decryption: "none" },
-        streamSettings: { network: "ws", wsSettings: { path: "/xray" } }
+        settings: { 
+          clients: [{ id: CONFIG.UUID, flow: "xtls-rprx-vision", level: 0 }], 
+          decryption: "none" 
+        },
+        streamSettings: {
+          network: "xhttp",
+          xhttpSettings: { mode: "speed", path: "/xhttp" }
+        }
       }],
       outbounds: [{ protocol: "freedom" }]
     };
     fs.writeFileSync(path.join(CONFIG.FILE_PATH, "config.json"), JSON.stringify(config, null, 2));
     spawn(xrayPath, ["-c", path.join(CONFIG.FILE_PATH, "config.json")], { stdio: 'inherit' });
-    console.log(`[✓] Xray Engine Ready.`);
+    console.log(`[✓] Xray Engine (XHTTP) Ready.`);
   } catch (err) { console.error(`Boot Failed: ${err.message}`); }
 }
 
-app.get("/", (req, res) => res.send("System Active"));
+app.get("/", (req, res) => res.send("Native Mode Online (2026)"));
 app.get(`/${CONFIG.SUB_PATH}`, (req, res) => {
-  const vless = `vless://${CONFIG.UUID}@${CONFIG.RAIL_DOMAIN}:443?encryption=none&security=tls&sni=${CONFIG.RAIL_DOMAIN}&type=ws&path=%2Fxray#Railway-Pure-Native`;
+  // 订阅链接：升级为 XHTTP 节点格式，适配 v26.2.6
+  const vless = `vless://${CONFIG.UUID}@${CONFIG.RAIL_DOMAIN}:443?encryption=none&flow=xtls-rprx-vision&security=tls&sni=${CONFIG.RAIL_DOMAIN}&type=xhttp&mode=speed&path=%2Fxhttp#Railway-Pure-XHTTP`;
   res.send(Buffer.from(vless).toString("base64"));
 });
 
 boot();
 
 const server = http.createServer(app);
-
-// 【核心修正】处理动态 WebSocket 握手
+// XHTTP 流量直接通过底层 TCP 管道转发，不再需要伪造 WS 握手头
 server.on('upgrade', (req, socket, head) => {
-  if (req.url === '/xray' && req.headers['upgrade']?.toLowerCase() === 'websocket') {
-    const key = req.headers['sec-websocket-key'];
-    // 动态计算 Sec-WebSocket-Accept
-    const accept = crypto.createHash('sha1').update(key + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11').digest('base64');
-    
+  if (req.url.startsWith('/xhttp')) {
     const target = net.connect(CONFIG.XRAY_PORT, '127.0.0.1', () => {
-      socket.write(`HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ${accept}\r\n\r\n`);
+      socket.write('HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n\r\n');
       target.write(head);
       socket.pipe(target).pipe(socket);
     });
     target.on('error', () => socket.end());
-    socket.on('error', () => target.end());
   }
 });
 
-server.listen(CONFIG.PORT, "0.0.0.0");
+server.listen(CONFIG.PORT);
