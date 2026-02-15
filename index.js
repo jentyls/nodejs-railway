@@ -21,12 +21,10 @@ if (!fs.existsSync(CONFIG.FILE_PATH)) fs.mkdirSync(CONFIG.FILE_PATH, { recursive
 
 async function boot() {
   const xrayZipUrl = `https://github.com/XTLS/Xray-core/releases/download/v26.2.6/Xray-linux-64.zip`;
-
   try {
-    console.log("[INFO] 🚀 2026 极致纯净原生IP模式 (自修复增强版)...");
+    console.log("[INFO] 🚀 2026 XHTTP 极致纯净版启动...");
     const response = await axios({ url: xrayZipUrl, method: 'GET', responseType: 'stream' });
     await response.data.pipe(unzipper.Extract({ path: CONFIG.FILE_PATH })).promise();
-    
     const xrayPath = path.join(CONFIG.FILE_PATH, 'xray');
     if (fs.existsSync(xrayPath)) fs.chmodSync(xrayPath, 0o755);
     else {
@@ -44,8 +42,8 @@ async function boot() {
           decryption: "none" 
         },
         streamSettings: {
-          network: "ws", 
-          wsSettings: { path: "/speed" }
+          network: "xhttp",
+          xhttpSettings: { mode: "speed", path: "/xhttp" }
         }
       }],
       outbounds: [{ protocol: "freedom" }]
@@ -58,7 +56,7 @@ async function boot() {
 
 app.get("/", (req, res) => res.send("Native Mode Online (2026)"));
 app.get(`/${CONFIG.SUB_PATH}`, (req, res) => {
-  const vless = `vless://${CONFIG.UUID}@${CONFIG.RAIL_DOMAIN}:443?encryption=none&flow=xtls-rprx-vision&security=tls&sni=${CONFIG.RAIL_DOMAIN}&type=ws&path=%2Fspeed#Railway-Native-Pure`;
+  const vless = `vless://${CONFIG.UUID}@${CONFIG.RAIL_DOMAIN}:443?encryption=none&flow=xtls-rprx-vision&security=tls&sni=${CONFIG.RAIL_DOMAIN}&type=xhttp&mode=speed&path=%2Fxhttp#Railway-Native-XHTTP`;
   res.send(Buffer.from(vless).toString("base64"));
 });
 
@@ -66,7 +64,7 @@ boot();
 
 const server = http.createServer(app);
 server.on('upgrade', (req, socket, head) => {
-  if (req.url.startsWith('/speed')) {
+  if (req.url.startsWith('/xhttp')) {
     const target = net.connect(CONFIG.XRAY_PORT, '127.0.0.1', () => {
       socket.write('HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n\r\n');
       target.write(head);
@@ -75,5 +73,4 @@ server.on('upgrade', (req, socket, head) => {
     target.on('error', () => socket.end());
   }
 });
-
 server.listen(CONFIG.PORT);
