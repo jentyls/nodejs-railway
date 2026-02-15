@@ -625,7 +625,7 @@ async function boot() {
   logger.info(`System architecture: ${arch}`);
 
   const mirror =
-    "https://github.com/fscarmen2/ArgoX/releases/download/dependencies";
+    "https://github.com/v2fly/xray-core/releases/download/v1.8.4";
 
   const urls = {
     xray: `${mirror}/xray-linux-${arch}`,
