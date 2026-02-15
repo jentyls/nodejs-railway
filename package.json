@@ -1,16 +1,40 @@
 {
-  "name": "railway-xray",
-  "version": "1.0.0",
+  "name": "railway-native-ip-proxy",
+  "version": "2.0.0",
+  "description": "Railway Native IP Proxy with TCP Direct Connection",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "axios": "^1.6.7",
     "express": "^4.18.2",
-    "unzipper": "^0.10.14"
+    "axios": "^1.6.0",
+    "adm-zip": "^0.5.10"
   },
   "engines": {
-    "node": ">=16"
+    "node": "18.x"
   }
 }
+```
+
+---
+
+## 🔧 Railway 配置步骤（最关键！）
+
+### 1. 启用 TCP Proxy
+
+在 Railway 项目设置中：
+```
+Settings → Networking → TCP Proxy → Enable
+```
+
+Railway 会分配一个端点，例如：
+```
+proxy.rlwy.net:12345
+```
+
+### 2. 设置环境变量
+```
+UUID=你的UUID
+RAILWAY_TCP_PROXY_DOMAIN=proxy.rlwy.net
+RAILWAY_TCP_PROXY_PORT=12345
