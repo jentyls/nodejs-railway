@@ -8,7 +8,7 @@ const unzipper = require("unzipper");
 const CONFIG = {
   UUID: process.env.UUID || "9afd1229-b893-40c1-84dd-51e7ce204913",
   PORT: parseInt(process.env.PORT) || 8080,
-  XRAY_PORT: 3000,
+  XRAY_PORT: 3001,
   
   // Railway TCP Proxy 端点（自动设置）
   TCP_DOMAIN: process.env.RAILWAY_TCP_PROXY_DOMAIN || "",
