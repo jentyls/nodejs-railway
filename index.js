@@ -105,6 +105,8 @@ app.get("/health", (req, res) => {
   });
 });
 
+boot();
+
 const server = http.createServer(app);
 
 server.on('upgrade', (req, socket, head) => {
@@ -130,13 +132,9 @@ server.on('upgrade', (req, socket, head) => {
   }
 });
 
-// 【关键修改】先启动 HTTP 服务器，让 Railway 知道服务已就绪
 server.listen(CONFIG.PORT, "0.0.0.0", () => {
-  console.log(`[✓] HTTP 服务已启动，端口: ${CONFIG.PORT}`);
-  console.log(`[✓] Railway 健康检查通过`);
-  
-  // HTTP 启动后再启动 Xray（后台运行）
-  boot();
+  console.log(`[✓] 服务已启动，监听端口: ${CONFIG.PORT}`);
+  console.log(`[✓] 订阅地址: https://${CONFIG.RAIL_DOMAIN}/${CONFIG.SUB_PATH}`);
 });
 
 process.on("SIGTERM", () => {
