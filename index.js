@@ -102,20 +102,34 @@ async function boot() {
 
 app.get("/", (req, res) => {
   const host = getHost(req);
-  res.send("<h1>Railway Xray Proxy</h1><p>Version: v1.8.4</p><p>订阅: <code>https://" + host + "/" + CONFIG.SUB_PATH + "</code></p>");
+  res.send("<h1>Railway Xray Proxy</h1><p>Version: v1.8.4</p><p>订阅: <code>https://" + host + "/" + CONFIG.SUB_PATH + "</code></p><p>手动导入: 访问订阅链接，复制内容，解码后导入</p>");
 });
 
 app.get("/" + CONFIG.SUB_PATH, (req, res) => {
   const host = getHost(req);
-  const vless = "vless://" + CONFIG.UUID + "@" + host + ":443?encryption=none&security=tls&sni=" + host + "&type=ws&path=%2Fxray#Railway-Auto";
-  const base64 = Buffer.from(vless).toString("base64");
   
-  // 设置正确的响应头
-  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-  res.setHeader('Profile-Update-Interval', '24');
-  res.setHeader('Subscription-Userinfo', 'upload=0; download=0; total=10737418240; expire=0');
+  // 生成 VLESS 链接
+  const vlessUrl = "vless://" + CONFIG.UUID + "@" + host + ":443?encryption=none&security=tls&sni=" + host + "&type=ws&path=%2Fxray#Railway-" + host;
   
-  res.send(base64);
+  // 转换为 base64（标准 v2ray 订阅格式）
+  const base64Content = Buffer.from(vlessUrl).toString("base64");
+  
+  // 设置响应头（兼容 v2rayN）
+  res.setHeader("Content-Type", "text/plain; charset=utf-8");
+  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+  res.setHeader("Profile-Update-Interval", "24");
+  res.setHeader("Subscription-Userinfo", "upload=0; download=0; total=10737418240; expire=0");
+  
+  // 返回 base64（标准格式，单个节点直接返回）
+  res.send(base64Content);
+});
+
+app.get("/link", (req, res) => {
+  const host = getHost(req);
+  const vlessUrl = "vless://" + CONFIG.UUID + "@" + host + ":443?encryption=none&security=tls&sni=" + host + "&type=ws&path=%2Fxray#Railway-" + host;
+  res.send("<h2>手动导入链接</h2><p>复制下面的链接，在 v2rayN 中选择 '从剪贴板导入批量URL'：</p><textarea style='width:100%;height:100px'>" + vlessUrl + "</textarea>");
 });
 
 app.get("/health", (req, res) => {
