@@ -20,14 +20,12 @@ if (!fs.existsSync(CONFIG.FILE_PATH)) {
   fs.mkdirSync(CONFIG.FILE_PATH, { recursive: true });
 }
 
-// 清理旧进程
 function cleanup() {
   try {
     execSync("pkill -9 xray 2>/dev/null || true", { stdio: 'ignore' });
   } catch (e) {}
 }
 
-// 动态获取域名（自动适配任何域名）
 const getHost = (req) => {
   return process.env.RAILWAY_STATIC_URL || req.headers.host || "localhost";
 };
@@ -36,8 +34,7 @@ async function boot() {
   const xrayZipUrl = "https://github.com/XTLS/Xray-core/releases/download/v1.8.4/Xray-linux-64.zip";
   
   try {
-    console.log("[INFO] 🚀 正在部署 Xray v1.8.4...");
-    
+    console.log("[INFO] 正在部署 Xray v1.8.4...");
     cleanup();
     
     const xrayPath = path.join(CONFIG.FILE_PATH, 'xray');
@@ -91,32 +88,34 @@ async function boot() {
     });
     
     xray.on("exit", (code) => {
-      console.error(`[错误] Xray 退出 (${code})，30秒后重启...`);
+      console.error("[错误] Xray 退出 (" + code + ")，30秒后重启...");
       setTimeout(boot, 30000);
     });
     
     console.log("[✓] Xray 核心运行中");
     
   } catch (err) {
-    console.error(`[ERROR] 启动失败: ${err.message}`);
+    console.error("[ERROR] 启动失败: " + err.message);
     setTimeout(boot, 10000);
   }
 }
 
 app.get("/", (req, res) => {
   const host = getHost(req);
-  res.send(`
-    <h1>🚀 Railway Xray Proxy</h1>
-    <p>Version: v1.8.4 Stable</p>
-    <p>订阅: <code>https://${host}/${CONFIG.SUB_PATH}</code></p>
-    <p>当前域名: <code>${host}</code></p>
-  `);
+  res.send("<h1>Railway Xray Proxy</h1><p>Version: v1.8.4</p><p>订阅: <code>https://" + host + "/" + CONFIG.SUB_PATH + "</code></p>");
 });
 
-app.get(`/${CONFIG.SUB_PATH}`, (req, res) => {
+app.get("/" + CONFIG.SUB_PATH, (req, res) => {
   const host = getHost(req);
-  const vless = `vless://${CONFIG.UUID}@${host}:443?encryption=none&security=tls&sni=${host}&type=ws&path=%2Fxray#Railway-Auto`;
-  res.send(Buffer.from(vless).toString("base64"));
+  const vless = "vless://" + CONFIG.UUID + "@" + host + ":443?encryption=none&security=tls&sni=" + host + "&type=ws&path=%2Fxray#Railway-Auto";
+  const base64 = Buffer.from(vless).toString("base64");
+  
+  // 设置正确的响应头
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.setHeader('Profile-Update-Interval', '24');
+  res.setHeader('Subscription-Userinfo', 'upload=0; download=0; total=10737418240; expire=0');
+  
+  res.send(base64);
 });
 
 app.get("/health", (req, res) => {
@@ -135,9 +134,9 @@ const server = http.createServer(app);
 server.on('upgrade', (req, socket, head) => {
   if (req.url === '/xray') {
     const target = net.connect(CONFIG.XRAY_PORT, '127.0.0.1', () => {
-      let headerStr = `${req.method} ${req.url} HTTP/1.1\r\n`;
+      let headerStr = req.method + " " + req.url + " HTTP/1.1\r\n";
       for (let k in req.headers) {
-        headerStr += `${k}: ${req.headers[k]}\r\n`;
+        headerStr += k + ": " + req.headers[k] + "\r\n";
       }
       headerStr += '\r\n';
       
@@ -156,8 +155,7 @@ server.on('upgrade', (req, socket, head) => {
 });
 
 server.listen(CONFIG.PORT, "0.0.0.0", () => {
-  console.log(`[✓] 服务已启动，监听端口: ${CONFIG.PORT}`);
-  console.log(`[✓] 订阅地址: https://${process.env.RAILWAY_STATIC_URL || 'your-domain'}/${CONFIG.SUB_PATH}`);
+  console.log("[✓] 服务已启动，端口: " + CONFIG.PORT);
 });
 
 process.on("SIGTERM", () => {
