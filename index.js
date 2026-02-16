@@ -9,7 +9,7 @@ const http = require("http");
 const net = require("net");
 
 const CONFIG = {
-  UUID: process.env.UUID || "9afd1229-b893-40c1-84dd-51e7ce204913",
+  UUID: process.env.UUID || "606d77a4-93da-49c7-83a5-b7fe52f2196f",
   PORT: parseInt(process.env.PORT) || 8080,
   XRAY_PORT: 3000, 
   RAIL_DOMAIN: process.env.RAILWAY_STATIC_URL || "nodejs-railway-production-fc83.up.railway.app",
